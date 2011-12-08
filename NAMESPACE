@@ -1,0 +1,18 @@
+useDynLib(wfe)
+
+export(wfe, pwfe)
+import(arm)
+
+S3method(summary, wfe)
+S3method(print, wfe)
+S3method(print, summary.wfe)
+
+S3method(summary, pwfe)
+S3method(print, pwfe)
+S3method(print, summary.pwfe)
+
+
+
+#export(Vectorize, wfe)
+#export(Transform, wfe)
+#GenWeights, Index, Wdemean)
