@@ -12,9 +12,11 @@
 \usage{
 wfe(formula, data, treat = "treat.name",
     unit.index, time.index = NULL, method = "unit",
-    qoi = c("ate", "att") , estimator = NULL,
-    C.it = NULL, White.alpha = 0.05,
-    hetero.se = TRUE, auto.se = TRUE)
+    qoi = c("ate", "att") , estimator = NULL, C.it = NULL,
+    hetero.se = TRUE, auto.se = TRUE,
+    White = TRUE, White.alpha = 0.05,
+    verbose = TRUE, unbiased.se = FALSE, unweighted = FALSE,
+    rank.check = FALSE, tol = sqrt(.Machine$double.eps))
 }
 
 
@@ -40,7 +42,7 @@ wfe(formula, data, treat = "treat.name",
   }
   \item{method}{method for weighted fixed effects regression, either
     \code{unit} for unit fixed effects; \code{time} for time fixed
-    effects. The default is \code{unit}.
+    effects. The default is \code{unit}. 
   }
 
   \item{qoi}{one of \code{"ate"} or \code{"att"}. The default is
@@ -55,16 +57,51 @@ wfe(formula, data, treat = "treat.name",
   \item{C.it}{an optional non-negative numeric vector specifying
     relative weights for each unit of analysis.
   }
-  \item{White.alpha}{level of functional specification test. See White
-    (1980) and Imai . The default is \code{0.05}.
-  }
+  
   \item{hetero.se}{a logical value indicating whether heteroskedasticity
-    across units is allowed in calculating standard errors. 
-  }
-  \item{auto.se}{a logical value indicating whether arbitrary
-    autocorrelation is allowed in calculating standard errors.
+    across units is allowed in calculating standard errors. The default
+    is \code{TRUE}.
   }
 
+  \item{auto.se}{a logical value indicating whether arbitrary
+    autocorrelation is allowed in calculating standard errors. The
+    default is \code{TRUE}.
+  }
+ 
+  \item{White}{a logical value indicating whether White misspecification
+    statistics should be calculated. The default is \code{TRUE}.
+  }
+  
+  \item{White.alpha}{level of functional specification test. See White
+    (1980) and Imai and Kim (2012). The default is \code{0.05}.
+  }
+
+  \item{verbose}{logical. If \code{TRUE}, helpful messages along with
+    a progress report of the weight calculation are printed
+    on the screen. The default is \code{TRUE}.
+  }
+
+  \item{unbiased.se}{logical. If \code{TRUE}, bias-asjusted
+    heteroskedasticity-robust standard errors are used. See Stock and
+    Watson (2008). Should be used only for balanced panel. The default
+    is \code{FALSE}.
+  }
+
+  \item{unweighted}{logical. If \code{TRUE}, standard unweighted fixed
+    effects model is estimated. The default is \code{FALSE}.
+  }
+
+  \item{rank.check}{logical. If \code{TRUE}, rank condition is checked
+    for fast calculation with projection method. The default is
+    \code{FALSE}.
+  }
+
+  \item{tol}{a relative tolerance to detect zero singular values for
+    generalized inverse. The default is sqrt(.Machine$double.eps)
+  }
+  
+
+  
 }
 
 
@@ -80,10 +117,15 @@ wfe(formula, data, treat = "treat.name",
  \item{coefficients}{a named vector of coefficients}
  \item{residuals}{the residuals, that is respons minus fitted values}
  \item{df}{the degree of freedom}
- \item{weights}{weights calculated from the model}
+ \item{W}{weight matrix calculated from the model. Row and column
+ indices can be found from unit.name, time.name.}
  \item{call}{the matched call}
  \item{causal}{causal quantity of interest}
  \item{estimator}{the estimating method}
+ \item{unit.name}{a vector containing unique unit names}
+ \item{unit.index}{a vector containing unique unit index number}
+ \item{time.name}{a vector containing unique time names}
+ \item{time.index}{a vector containing unique time index number}
  \item{method}{call of the method used}
  \item{vcov}{the variance covariance matrix}
  \item{White.alpha}{the alpha level for White specification test}
@@ -91,6 +133,7 @@ wfe(formula, data, treat = "treat.name",
  \item{White.stat}{the White statistics}
  \item{x}{the design matrix}
  \item{y}{the response vector}
+ \item{mf}{the model frame}
 }
 
 \details{
@@ -106,27 +149,33 @@ wfe(formula, data, treat = "treat.name",
 
   One can further set estimating methods: First-Difference
   (\code{estimator ="fd"}) or Difference-in-differences (\code{estimator
-  = "did"}).
-
+    = "did"}). For the two-way fixed effects model, set \code{estimator
+    = "did"}
+  
   To specify different ex-ante weights for each unit of analysis, use
   non-negative weights \code{C.it}. For instance, using the survey
   weights for \code{C.it} enables the estimation fo the average
   treatement effect for the target population.
 
-
+  An object of class "wfe" contains vectors of unique unit(time) names and
+  unique unit(time) indices. 
 
 }
 
 \references{
-  Imai, Kosuke and In Song Kim. (2011) ``Understanding and
-  Improving Linear Fixed Effects Regression Models for Causal
-  Inference.'' Technical Report, Department of Politics, Princeton
-  University.  available at
+  Imai, Kosuke and In Song Kim. (2012) ``On the Use of Linear Fixed
+  Effects Regression Models for Causal Inference.'' Technical Report,
+  Department of Politics, Princeton University.  available at
   \url{http://imai.princeton.edu/research/FEmatch.html}
-    
+
+  Stock, James and Mark Watson. (2008) ``Heteroskedasticity-Robust
+  Standard Errors for Fixed Effect Panel Data Regression'' Econometrica,
+  76, 1.
+  
   White, Halbert. (1980) `Using Least Squares to Approximate Unknown
   Regression Functions.''  International Economic Review, 21, 1,
   149--170.
+
 }
 \seealso{
   \code{pwfe} for fitting weighted fixed effects models with propensity
@@ -213,14 +262,39 @@ summary(mod.att)
 
 mod.obs <- wfe(y~ tr+x1+x2, data = Data.obs, treat = "tr",
                unit.index = "unit", time.index = "time", method = "unit",
-               qoi = "ate", hetero.se=TRUE, auto.se=TRUE)
+               qoi = "ate", hetero.se=TRUE, auto.se=TRUE,
+               White = TRUE, White.alpha = 0.05)
 
 ## summarize the results
 summary(mod.obs)
 
 ## extracting weigths
-summary(mod.obs)$Weights
+summary(mod.obs)$W
+
+
+
+###################################################################
+# Example 3: Observational Studies with differences-in-differences
+###################################################################
+
+## run difference-in-differences estimator.
+## Note: the quantity of interest is Average Treatment Effect ("ate")
+## and the standard errors allow heteroskedasticity and arbitrary
+## autocorrelation.
+
+mod.did <- wfe(y~ tr+x1+x2, data = Data.obs, treat = "tr",
+               unit.index = "unit", time.index = "time", method = "unit",
+               qoi = "ate", estimator ="did", hetero.se=TRUE, auto.se=TRUE,
+               White = TRUE, White.alpha = 0.05, verbose = TRUE)
+
+## summarize the results
+summary(mod.did)
+
+## extracting weigths
+summary(mod.did)$W
+
 }
+
 
 \author{Kosuke Imai, Princeton University, \email{kimai@princeton.edu}
   and In Song Kim, Princeton University, \email{insong@princeton.edu}}

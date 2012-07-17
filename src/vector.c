@@ -3,6 +3,47 @@
 #include <stdio.h>
 #include <R_ext/Utils.h>
 #include <R.h>
+#include "vector.h"
+#include <complex.h>
+#include <R_ext/Complex.h>
+
+Rcomplex* compArray(int num) {
+  
+  Rcomplex *cArray = (Rcomplex *)malloc(num * sizeof(Rcomplex));
+  if (!cArray)
+    error("Out of memory error in compArray\n");
+  return cArray;
+}
+
+
+Rcomplex** compMatrix(int row, int col) {
+
+  int i;
+  Rcomplex **cMatrix = (Rcomplex **)malloc(row * sizeof(Rcomplex *));
+  if (!cMatrix)
+    error("Out of memory error in compMatrix\n");
+  for (i = 0; i < row; i++) {
+     cMatrix[i] = (Rcomplex *)calloc(col, sizeof(Rcomplex));
+    if (!cMatrix[i])
+      error("Out of memory error in compMatrix\n");
+  }
+  return cMatrix;
+}
+
+void PcompMatrix(Rcomplex **cmatrix, int row, int col) {
+   int i, j;
+   for (i = 0; i < row; i++) {
+      for (j = 0; j < col; j++) {
+	 if (cmatrix[i][j].i >= 0) {
+	    Rprintf("%6.4f+%6.4fi ", cmatrix[i][j].r, cmatrix[i][j].i);
+	 } 
+	 if (cmatrix[i][j].i < 0) {
+	    Rprintf("%6.4f%6.4fi ", cmatrix[i][j].r, cmatrix[i][j].i);
+	 } 
+      }
+      Rprintf("\n");      
+   }
+}
 
 int* intArray(int num) {
   int *iArray = (int *)malloc(num * sizeof(int));
@@ -127,6 +168,14 @@ void FreeintMatrix(int **Matrix, int row) {
     free(Matrix[i]);
   free(Matrix);
 }
+
+void FreecompMatrix(Rcomplex **Matrix, int row) {
+  int i; 
+  for (i = 0; i < row; i++)
+    free(Matrix[i]);
+  free(Matrix);
+}
+
 
 void Free3DMatrix(double ***Matrix, int index, int row) {
   int i;

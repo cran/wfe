@@ -1,6 +1,9 @@
 #include <stdlib.h>
 #include <assert.h>
 
+Rcomplex *compArray(int num);
+Rcomplex **compMatrix(int row, int col);
+
 int *intArray(int num);
 void PintArray(int *ivector, int length);
 int **intMatrix(int row, int col);
@@ -20,5 +23,6 @@ long *longArray(int num);
 
 void FreeMatrix(double **Matrix, int row);
 void FreeintMatrix(int **Matrix, int row);
+void FreecompMatrix(Rcomplex **Matrix, int row);
 void Free3DMatrix(double ***Matrix, int index, int row);
 void Free4DMatrix(double ****Matrix, int index, int index1, int row);
