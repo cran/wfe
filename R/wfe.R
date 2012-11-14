@@ -4,20 +4,38 @@ wfe <- function (formula, data, treat = "treat.name",
                  hetero.se = TRUE, auto.se = TRUE,
                  White = TRUE, White.alpha = 0.05,
                  verbose = TRUE, unbiased.se = FALSE, unweighted = FALSE,
-                 rank.check = FALSE, tol = sqrt(.Machine$double.eps)){
+                 tol = sqrt(.Machine$double.eps)){
+
 
   wfe.call <- match.call()
   ## set up data frame, with support for standard and modified responses
   mf <- model.frame(formula=formula, data=data)
   x <- model.matrix(attr(mf, "terms"), data=mf)
-  y <- data$y <- model.response(mf, "numeric")
-  tn.row <- nrow(data) # total number of rows in data
+  y <- model.response(mf, "numeric")
+  tn.row <- nrow(mf) # total number of rows in data
+
+  class(data) <- "data.frame"
+
+  ## ## remove missing variables: removing rows with missing values in either y or treat
+
+  remove.indices <- which(!rownames(data) %in% rownames(mf))
   
  
+  if (length(remove.indices) > 0){
+    data <- data[-remove.indices,]
+    if (verbose)
+      cat(" \nMissing values are removed\n")
+  }
+
+  data$y <- y
+  
   ## Creating dummies variables for White test in the end
   X <- as.data.frame(x[,-1])
   p <- ncol(X)
 
+  ## e <- environment()
+  ## save(file = "temp.RData", list = ls(), env = e)
+  
 
 ### Warnings
   ## Warning for missing unit & time index
@@ -84,7 +102,7 @@ wfe <- function (formula, data, treat = "treat.name",
 
   ## time index
   if (is.null(time.index)) {
-    data$t.index <- GenTime(data$u.index, tn.row, length(uniq.u))
+    data$t.index  <- GenTime(data$u.index, tn.row, length(uniq.u))
     numeric.t.index <- as.numeric(as.factor(data$t.index))
   } else {
     numeric.t.index <- as.numeric(as.factor(data[,time.index]))
@@ -111,6 +129,11 @@ wfe <- function (formula, data, treat = "treat.name",
   if (verbose)
     cat(" \nNumber of unique", method, "is", unit.number, "\n")
 
+  ## e <- environment()
+  ## save(file = "temp.RData", list = ls(), env = e)
+ 
+  
+
   ## order data by unit index
 
   tmp <- cbind(X, data$u.index, data$t.index) 
@@ -121,15 +144,31 @@ wfe <- function (formula, data, treat = "treat.name",
   data <- data[order(data$u.index, data$t.index),]
   y <- data$y[order(data$u.index, data$t.index)]
 
+  ## e <- environment()
+  ## save(file = "temp.RData", list = ls(), env = e)
+
   ## saving unit index for each unit
   name.unit <- unique(data[,unit.index])
   number.unit <- unique(numeric.u.index)
-
+  units <- as.data.frame(cbind(number.unit,as.character(name.unit)))
+  colnames(units) <- c("unit.index", "unit")
+  rownames(units) <- seq(1:nrow(units))
+  
   ## saving time index for each time
-  name.time <- unique(data[,time.index])
-  number.time <- unique(numeric.t.index)
 
- 
+  if (is.null(time.index)) {
+    name.time  <- unique(data$t.index)
+  } else {
+    name.time <- unique(data[,time.index])
+  }
+  number.time <- unique(numeric.t.index)
+  times <- cbind(number.time, name.time)
+  times <- as.data.frame(times[order(times[,1]),])
+  colnames(times) <- c("time.index", "time")
+
+
+
+  
   ## new model frame order by u.index
   mf.col <- colnames(mf)
   mf.sorted <- cbind(y,X)
@@ -149,6 +188,7 @@ wfe <- function (formula, data, treat = "treat.name",
   ## quantity of interest: qoi
 
   if (missing(qoi)){
+    qoi <- "ate"
     causal <- "ate"
     ate.n <- 1
   }
@@ -362,15 +402,18 @@ wfe <- function (formula, data, treat = "treat.name",
 
       ## 1. arbitrary autocorrelation as well as heteroskedasticity (Eq 12)
 
+      ## degrees of freedom adjustment
+      df.adjust <- 1/(nrow(X.tilde)) * ((nrow(X.tilde)-1)/(nrow(X.tilde)-J.u-p)) * (J.u/(J.u-1))
+      
       Omega.hat.HAC <- OmegaHatHAC(nrow(X.tilde), p, wdm.unit, J.u, X.tilde, u.tilde)
       Omega.hat.HAC <- matrix(Omega.hat.HAC, nrow = p, ncol = p)
-      Omega.hat.HAC <- (1/(nrow(X.tilde)))* Omega.hat.HAC # without degree of freedom adjustment 
-      ## Omega.hat.HAC <- (1/(nrow(X.tilde) - J.u - p))* Omega.hat.HAC
+      ## Omega.hat.HAC <- (1/(nrow(X.tilde)))* Omega.hat.HAC # without degree of freedom adjustment 
+      Omega.hat.HAC <- df.adjust * Omega.hat.HAC
       
       Omega.hat.fe.HAC <- OmegaHatHAC(nrow(X.hat), p, wdm.unit, J.u, X.hat, u.hat)
       Omega.hat.fe.HAC <- matrix(Omega.hat.fe.HAC, nrow = p, ncol = p)
-      Omega.hat.fe.HAC <- (1/(nrow(X.hat))) * Omega.hat.fe.HAC # without degree of freedom adjustment
-      ## Omega.hat.fe.HAC <- (1/(nrow(X.hat) - J.u - p)) * Omega.hat.fe.HAC
+      ## Omega.hat.fe.HAC <- (1/(nrow(X.hat))) * Omega.hat.fe.HAC # without degree of freedom adjustment
+      Omega.hat.fe.HAC <- df.adjust * Omega.hat.fe.HAC
 
       Psi.hat.wfe <- (nrow(X.tilde) * ginv.XX.tilde) %*% Omega.hat.HAC %*% (nrow(X.tilde) * ginv.XX.tilde)
       Psi.hat.fe <- (nrow(X.hat) * ginv.XX.hat) %*% Omega.hat.fe.HAC %*% (nrow(X.hat) * ginv.XX.hat)
@@ -525,10 +568,8 @@ wfe <- function (formula, data, treat = "treat.name",
               residuals = y - (x[,-1] %*% coef.wls),
               W = W,
               uniq.n.units = J.u,
-              unit.name = name.unit,
-              unit.index = number.unit,
-              time.name = name.time,
-              time.index = number.time,
+              units = units,
+              times = times,
               method = method,
               causal = causal,
               est = est,
@@ -613,7 +654,18 @@ wfe <- function (formula, data, treat = "treat.name",
       Udummy  <- sparseMatrix(x=1, i=Udummy.i, j=Udummy.j)
 
       t <- as.matrix(table(data$u.index, data$t.index))
+      ## checking panel structure
+      if (verbose)
+        if (length(which(t==0)) > 0){
+          cat("\nUnbalanced Panel Data\n")
+        }
+      if ( length(which(t>1)) > 0 ){
+        stop ("\nunit-time pair is not unique\n")
+      }
+      flush.console()
+      
 
+      
       ## this takes time: should be made more efficient
       Tdummy <- array(0,dim=c(0,length(uniq.t)))
       for (j in 1:nrow(t)) {
@@ -645,7 +697,7 @@ wfe <- function (formula, data, treat = "treat.name",
       P1 <- Udummy %*% tcrossprod(Diagonal(x=1/as.vector(table(data$u.index))), Udummy)
     
       ## e <- environment()
-      ## save(file = "temp.RData", list = ls(), env = e)
+      ## save(file = "test.RData", list = ls(), env = e)
     
       Q1 <- Diagonal(x=1, n=nrow(Udummy)) - P1
         
@@ -657,6 +709,7 @@ wfe <- function (formula, data, treat = "treat.name",
       X <- as.matrix(X)
       Y <- as.matrix(data$y)
       
+   
       YX <- cbind(Y,X)
         
       Data.2wdm <- as.data.frame(as.matrix(YX - P1%*%YX - Q.QQginv %*% crossprod(Q,YX)))
@@ -973,25 +1026,7 @@ wfe <- function (formula, data, treat = "treat.name",
       ## D2.starL[[1]] <- drop0(D.starL[[1]][,D2.index.full])
       ## D2.starL[[2]] <- drop0(D.starL[[2]][,D2.index.full])
 
-      
-      ## rank condition check 1
-      if (rank.check == TRUE){
-        ## UT <- list()
-        ## UT[[1]] <- Matrix(cBind(D1.starL[[1]], D2.starL[[1]]))
-        ## UT[[2]] <- Matrix(cBind(D1.starL[[2]], D2.starL[[2]]))
-        ## Ustar <- Sparse_compMatrixMultiply(R1, I1, UT[[1]], UT[[2]])
-        ## DD <- Sparse_compMatrix_crossprod(Ustar[[1]], Ustar[[2]], Ustar[[1]], Ustar[[2]]) 
-        ## DD.rank <- rankMatrix(DD[[1]])
-        ## rm(D.starL, UT, Ustar, DD)
-        ## gc()
-        
-        DD <- Sparse_compMatrix_crossprod(D.starL[[1]], D.starL[[2]], D.starL[[1]], D.starL[[2]])
-        DD.rank <- rankMatrix(DD[[1]])
-        rm(DD)
-        gc()
-      }
-
-      
+            
       rm(D.starL)
       gc()
 #########################################################################
@@ -1034,13 +1069,6 @@ wfe <- function (formula, data, treat = "treat.name",
 
       P1L <-  Sparse_compMatrix_tcrossprod(Dginv[[1]], Dginv[[2]], D1.starL[[1]], D1.starL[[2]])
 
-      ## rank condition check 2
-      if (rank.check == TRUE){
-        DD1 <- Sparse_compMatrix_crossprod(D1.starL[[1]], D1.starL[[2]], D1.starL[[1]], D1.starL[[2]])
-        DD1.rank <- rankMatrix(DD1[[1]])
-        rm(DD1)
-        gc()
-      }
       rm(Dginv, D1.starL)
       gc()
 
@@ -1058,22 +1086,6 @@ wfe <- function (formula, data, treat = "treat.name",
       ##   flush.console()
       ## }
       
-      ## rank condition check 3
-      if (rank.check == TRUE) {
-        R <- Sparse_compMatrix_crossprod(D2.starL[[1]], D2.starL[[2]], Q1L[[1]], Q1L[[2]])
-        R <- Sparse_compMatrixMultiply(R[[1]], R[[2]], D2.starL[[1]], D2.starL[[2]])
-        ## cat("rank condition:", DD.rank, DD1.rank, rankMatrix(R[[1]]), "\n")
-        flush.console()
-        if (DD.rank != DD1.rank + rankMatrix(R[[1]])) {
-          cat("rank condition:", DD.rank,"!=", DD1.rank,"+", rankMatrix(R[[1]]), "not satisfied\n")
-          flush.console()
-        } else {
-          cat("rank condition:", DD.rank,"=", DD1.rank,"+", rankMatrix(R[[1]]), "satisfied\n")
-        }
-        rm(R)
-        gc()
-      }
-
       
       Q <- try(Sparse_compMatrixMultiply(Q1L[[1]], Q1L[[2]], D2.starL[[1]], D2.starL[[2]]), silent = TRUE)
       if ((class(Q) == "try-error") & (White == TRUE)) {
@@ -1360,11 +1372,17 @@ wfe <- function (formula, data, treat = "treat.name",
         std.error <- "Heteroscedastic / Autocorrelation Robust Standard Error"
         ## stop ("Robust standard errors with autocorrelation is currently not supported")
 
+        ## degrees of freedom adjustment
+        ## cat("degrees of freedom:", J.u, J.t, p, "\n")
+        df.adjust <- 1/(nrow(X.tilde)) * ((nrow(X.tilde)-1)/(nrow(X.tilde)-J.u-J.t-p+1)) * (J.u/(J.u-1))
         
         Omega.hat.HAC <- as.real(comp_OmegaHAC(c(X.tilde), e.tilde, c(X.tilde), e.tilde, dim(X.tilde)[1], dim(X.tilde)[2], data$u.index, J.u))
         Omega.hat.HAC <- matrix(Omega.hat.HAC, nrow=ncol(X.tilde), ncol=ncol(X.tilde), byrow=T)
-        Omega.hat.HAC <- (1/(nrow(X.tilde)))* Omega.hat.HAC
-        
+        ## Omega.hat.HAC <- (1/(nrow(X.tilde)-J.u-J.t-p+1))* Omega.hat.HAC
+        ## Omega.hat.HAC <- (1/(nrow(X.tilde)))* Omega.hat.HAC 
+        Omega.hat.HAC <- df.adjust * Omega.hat.HAC
+
+
         ## check positive definiteness of Omega.hat.HAC
         if ( sum(as.numeric(eigen(Omega.hat.HAC)$values < 0)) > 0 ) {
           stop ("Omega.hat is not positive definite")
@@ -1373,7 +1391,7 @@ wfe <- function (formula, data, treat = "treat.name",
         
         Omega.hat.fe.HAC <- OmegaHatHAC(nrow(X.hat), ncol(X.hat), data$u.index, J.u, X.hat, u.hat)
         Omega.hat.fe.HAC <- matrix(Omega.hat.fe.HAC, nrow = ncol(X.hat), ncol = ncol(X.hat))
-        Omega.hat.fe.HAC <- (1/(nrow(X.hat))) * Omega.hat.fe.HAC
+        Omega.hat.fe.HAC <- (1/(nrow(X.hat)-J.u-J.t-p)) * Omega.hat.fe.HAC
         
         
         Psi.hat.wfe <- ((nrow(X.tilde))*ginv.XX.tilde) %*% Omega.hat.HAC %*% ((nrow(X.tilde))*ginv.XX.tilde)
@@ -1392,9 +1410,9 @@ wfe <- function (formula, data, treat = "treat.name",
 
         Omega.hat.HC <- as.real(comp_OmegaHC(c(X.tilde), e.tilde, c(X.tilde), e.tilde, dim(X.tilde)[1], dim(X.tilde)[2], data$u.index, J.u))
         Omega.hat.HC <- matrix(Omega.hat.HC, nrow=ncol(X.tilde), ncol=ncol(X.tilde), byrow=T)
-        Omega.hat.HC <- (1/(nrow(X.tilde)))* Omega.hat.HC
+        Omega.hat.HC <- (1/(nrow(X.tilde)-J.u-J.t-p+1))* Omega.hat.HC
+
         Psi.hat.wfe <- ((nrow(X.tilde))*ginv.XX.tilde) %*% Omega.hat.HC %*% ((nrow(X.tilde))*ginv.XX.tilde)
-        
         ## ## alternatively calculation (don't need to invert)
         ## Psi.hat.wfe2 <- (length(y.tilde)*ginv.XX.tilde) %*% ( (1/length(y.tilde)) * (crossprod((X.tilde*diag.ee.tilde), X.tilde)) ) %*% ((length(y.tilde))*ginv.XX.tilde)
 
@@ -1403,9 +1421,8 @@ wfe <- function (formula, data, treat = "treat.name",
 
         Omega.hat.fe.he <- OmegaHatHC(nrow(X.hat), ncol(X.hat), data$u.index, J.u, X.hat, u.hat)
         Omega.hat.fe.he <- matrix(Omega.hat.fe.he, nrow = ncol(X.hat), ncol = ncol(X.hat))
-        Omega.hat.fe.he <- (1/(nrow(X.hat))) * Omega.hat.fe.he
-        
-        
+        Omega.hat.fe.he <- (1/(nrow(X.hat)-J.u-J.t-p+1)) * Omega.hat.fe.he
+
         Psi.hat.fe <- (nrow(X.hat)*ginv.XX.hat) %*% Omega.hat.fe.he %*% (nrow(X.hat)*ginv.XX.hat)
         ## Same as the following matrix multiplication
         ## Psi.hat.fe <- (solve(XX.hat) %*% (1/d.f *(t(X.hat) %*% diag(diag(u.hat %*% t(u.hat))) %*% X.hat)) %*% solve(XX.hat))
@@ -1418,7 +1435,7 @@ wfe <- function (formula, data, treat = "treat.name",
       } else if ( (hetero.se == FALSE) & (auto.se == FALSE) ) {# indepdence and homoskedasticity
         std.error <- "Homoskedastic Standard Error"
         
-        Psi.hat.wfe <- sigma2 * ( (length(y.tilde)*ginv.XX.tilde) %*% ((1/length(y.tilde))*(crossprod((X.tilde*data$W.it[nz.index]), X.tilde))) %*% (length(y.tilde)*ginv.XX.tilde) ) 
+        Psi.hat.wfe <- sigma2 * ( (length(y.tilde)*ginv.XX.tilde) %*% ((1/(length(y.tilde)-J.u-J.t-p+1))*(crossprod((X.tilde*data$W.it[nz.index]), X.tilde))) %*% (length(y.tilde)*ginv.XX.tilde) ) 
         Psi.hat.fe <- (nrow(X.hat)) * vcov(fit.ols)
 
       } else if ( (hetero.se == FALSE) & (auto.se == TRUE) ) {# Kiefer
@@ -1514,10 +1531,8 @@ wfe <- function (formula, data, treat = "treat.name",
                 df = d.f,
                 residuals = y - (x[,-1] %*% coef.wls),
                 W = W,
-                unit.name = name.unit,
-                unit.index = number.unit,
-                time.name = name.time,
-                time.index = number.time,
+                units = units,
+                times = times,
                 method = method,
                 causal = causal,
                 est = est,
@@ -1562,6 +1577,8 @@ summary.wfe <- function(object, signif.stars = getOption("show.signif.stars"),..
               sigma = object$sigma,
               df = object$df,
               W = object$W,
+              units = object$units,
+              times = object$times,
               residuals = object$residuals,
               method = object$method,
               causal = object$causal,

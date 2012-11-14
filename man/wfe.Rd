@@ -16,7 +16,7 @@ wfe(formula, data, treat = "treat.name",
     hetero.se = TRUE, auto.se = TRUE,
     White = TRUE, White.alpha = 0.05,
     verbose = TRUE, unbiased.se = FALSE, unweighted = FALSE,
-    rank.check = FALSE, tol = sqrt(.Machine$double.eps))
+    tol = sqrt(.Machine$double.eps))
 }
 
 
@@ -88,13 +88,8 @@ wfe(formula, data, treat = "treat.name",
   }
 
   \item{unweighted}{logical. If \code{TRUE}, standard unweighted fixed
-    effects model is estimated. The default is \code{FALSE}.
-  }
-
-  \item{rank.check}{logical. If \code{TRUE}, rank condition is checked
-    for fast calculation with projection method. The default is
-    \code{FALSE}.
-  }
+    effects model is estimated. The default is \code{FALSE}. Note: users
+    do not need to specify \code{qoi} when unweighted=\code{TRUE}.}
 
   \item{tol}{a relative tolerance to detect zero singular values for
     generalized inverse. The default is sqrt(.Machine$double.eps)
@@ -118,14 +113,12 @@ wfe(formula, data, treat = "treat.name",
  \item{residuals}{the residuals, that is respons minus fitted values}
  \item{df}{the degree of freedom}
  \item{W}{weight matrix calculated from the model. Row and column
- indices can be found from unit.name, time.name.}
+ indices can be found from \code{units}, \code{times}.}
  \item{call}{the matched call}
  \item{causal}{causal quantity of interest}
  \item{estimator}{the estimating method}
- \item{unit.name}{a vector containing unique unit names}
- \item{unit.index}{a vector containing unique unit index number}
- \item{time.name}{a vector containing unique time names}
- \item{time.index}{a vector containing unique time index number}
+ \item{units}{a dataframe containing unit names used for \code{W}}
+ \item{times}{a dataframe containing time names used for \code{W}}
  \item{method}{call of the method used}
  \item{vcov}{the variance covariance matrix}
  \item{White.alpha}{the alpha level for White specification test}

@@ -1,12 +1,12 @@
-f586997b9787e7bb3006d1d2803f27f9 *Changelog
-41cccb047e4074f1fc090e2495b29448 *DESCRIPTION
+ec4c1f4a6c2628ba848ef8e97327879e *Changelog
+f3aec609983daf7af6e680ae4756d715 *DESCRIPTION
 321b544067a84bda690bdb50becd1cae *NAMESPACE
 9ee504c7234ce574eafbf094a1ba4a87 *R/functions.R
 74be3d5191777b2fd500f602a998e000 *R/onAttach.R
 c25bf681dca5eef2529a83f8fba064a2 *R/pwfe.R
-13a6531eb978c9267b74cf7f10b78c70 *R/wfe.R
+5b8cb3ce8706442e29aa888f4f1de85d *R/wfe.R
 0763ef4ddbec78a042dd497ffe8e1f2d *man/pwfe.Rd
-ca6c489bca5c30b1788eb741b5d6ac4d *man/wfe.Rd
+683a2ef638a185dcd2812d56fa38cca1 *man/wfe.Rd
 632e173eea096f5e7d8276a3751241d5 *src/Makevars
 e6fac05c653181ec9d20eda952ed2929 *src/vector.c
 15555376ad20cf692d064645f6df039a *src/vector.h
