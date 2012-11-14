@@ -16,6 +16,7 @@ wfe(formula, data, treat = "treat.name",
     hetero.se = TRUE, auto.se = TRUE,
     White = TRUE, White.alpha = 0.05,
     verbose = TRUE, unbiased.se = FALSE, unweighted = FALSE,
+    store.wdm = FALSE,
     tol = sqrt(.Machine$double.eps))
 }
 
@@ -86,10 +87,13 @@ wfe(formula, data, treat = "treat.name",
     Watson (2008). Should be used only for balanced panel. The default
     is \code{FALSE}.
   }
-
+  
   \item{unweighted}{logical. If \code{TRUE}, standard unweighted fixed
     effects model is estimated. The default is \code{FALSE}. Note: users
     do not need to specify \code{qoi} when unweighted=\code{TRUE}.}
+
+  \item{store.wdm}{logical. If \code{TRUE}, weighted demeaned
+    dataframe will be stored. The default is \code{FALSE}.}
 
   \item{tol}{a relative tolerance to detect zero singular values for
     generalized inverse. The default is sqrt(.Machine$double.eps)
@@ -124,8 +128,10 @@ wfe(formula, data, treat = "treat.name",
  \item{White.alpha}{the alpha level for White specification test}
  \item{White.pvalue}{the p-value for White specification test}
  \item{White.stat}{the White statistics}
- \item{x}{the design matrix}
- \item{y}{the response vector}
+ \item{X}{the design matrix}
+ \item{Y}{the response vector}
+ \item{X.wdm}{the demeaned design matrix}
+ \item{Y.wdm}{the demeaned response vector}
  \item{mf}{the model frame}
 }
 

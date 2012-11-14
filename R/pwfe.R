@@ -519,7 +519,7 @@ pwfe <- function (formula, treat = "treat.name", outcome, data, pscore = NULL,
 
         ## White test: null hypothesis is ``no misspecification''
 
-        white.stat <- as.real(Re(nrow(X.hat) * t(coef.ols - coef.wls) %*% ginv(Phi.hat) %*% (coef.ols - coef.wls)))
+        white.stat <- as.double(Re(nrow(X.hat) * t(coef.ols - coef.wls) %*% ginv(Phi.hat) %*% (coef.ols - coef.wls)))
         test.null <- pchisq(as.numeric(white.stat), df=p, lower.tail=F) < White.alpha
         white.p <- pchisq(as.numeric(white.stat), df=p, lower.tail=F)
         flush.console()

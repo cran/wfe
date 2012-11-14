@@ -4,6 +4,7 @@ wfe <- function (formula, data, treat = "treat.name",
                  hetero.se = TRUE, auto.se = TRUE,
                  White = TRUE, White.alpha = 0.05,
                  verbose = TRUE, unbiased.se = FALSE, unweighted = FALSE,
+                 store.wdm = FALSE,
                  tol = sqrt(.Machine$double.eps)){
 
 
@@ -332,6 +333,16 @@ wfe <- function (formula, data, treat = "treat.name",
 
     }
 
+    ## save weighted demeaned dataframe
+    if (store.wdm == TRUE){
+      Y.wdm <- Data.wdm[,1]
+      X.wdm <- Data.wdm[,(2:(nc-3))]
+    } else {
+      Y.wdm <- NULL
+      X.wdm <- NULL
+    }
+    
+
     
     ## change formula without intercept
     a <- unlist(strsplit(as.character(formula), "~"))
@@ -577,7 +588,9 @@ wfe <- function (formula, data, treat = "treat.name",
               White.pvalue = white.p,
               White.alpha = White.alpha,
               White.stat = white.stat,
-              White.test = test.null)
+              White.test = test.null,
+              Y.wdm = Y.wdm,
+              X.wdm = X.wdm)
     class(z) <- "wfe"
     z
 
@@ -1149,6 +1162,17 @@ wfe <- function (formula, data, treat = "treat.name",
       
       y.tilde <- Transformed[,1]
       X.tilde <- as.matrix(Transformed[,-1])
+
+      ## save weighted demeaned dataframe
+      if (store.wdm == TRUE){
+        Y.wdm <- y.tilde
+        X.wdm <- X.tilde
+      } else {
+        Y.wdm <- NULL
+        X.wdm <- NULL
+      }
+    
+
       rm(Transformed)
       gc()
       
@@ -1303,7 +1327,7 @@ wfe <- function (formula, data, treat = "treat.name",
         colnames(betaT) <- a[3]
       }
       ## print(betaT)
-      coef.wls <- matrix(as.real(Re(betaT)))
+      coef.wls <- matrix(as.double(Re(betaT)))
       rownames(coef.wls) <- colnames(X.tilde)
       
 
@@ -1362,7 +1386,7 @@ wfe <- function (formula, data, treat = "treat.name",
       d.f <- length(y.tilde)
 
       ## cat("Sum of squared residuals:", sum(resid^2), "\n")
-      sigma2 <- as.real(Re(sum(resid^2)/d.f))
+      sigma2 <- as.double(Re(sum(resid^2)/d.f))
       
       ## cat("sigma2", sigma2, "\n")
 
@@ -1376,7 +1400,7 @@ wfe <- function (formula, data, treat = "treat.name",
         ## cat("degrees of freedom:", J.u, J.t, p, "\n")
         df.adjust <- 1/(nrow(X.tilde)) * ((nrow(X.tilde)-1)/(nrow(X.tilde)-J.u-J.t-p+1)) * (J.u/(J.u-1))
         
-        Omega.hat.HAC <- as.real(comp_OmegaHAC(c(X.tilde), e.tilde, c(X.tilde), e.tilde, dim(X.tilde)[1], dim(X.tilde)[2], data$u.index, J.u))
+        Omega.hat.HAC <- as.double(comp_OmegaHAC(c(X.tilde), e.tilde, c(X.tilde), e.tilde, dim(X.tilde)[1], dim(X.tilde)[2], data$u.index, J.u))
         Omega.hat.HAC <- matrix(Omega.hat.HAC, nrow=ncol(X.tilde), ncol=ncol(X.tilde), byrow=T)
         ## Omega.hat.HAC <- (1/(nrow(X.tilde)-J.u-J.t-p+1))* Omega.hat.HAC
         ## Omega.hat.HAC <- (1/(nrow(X.tilde)))* Omega.hat.HAC 
@@ -1408,7 +1432,7 @@ wfe <- function (formula, data, treat = "treat.name",
         
         std.error <- "Heteroscedastic Robust Standard Error"
 
-        Omega.hat.HC <- as.real(comp_OmegaHC(c(X.tilde), e.tilde, c(X.tilde), e.tilde, dim(X.tilde)[1], dim(X.tilde)[2], data$u.index, J.u))
+        Omega.hat.HC <- as.double(comp_OmegaHC(c(X.tilde), e.tilde, c(X.tilde), e.tilde, dim(X.tilde)[1], dim(X.tilde)[2], data$u.index, J.u))
         Omega.hat.HC <- matrix(Omega.hat.HC, nrow=ncol(X.tilde), ncol=ncol(X.tilde), byrow=T)
         Omega.hat.HC <- (1/(nrow(X.tilde)-J.u-J.t-p+1))* Omega.hat.HC
 
@@ -1448,11 +1472,11 @@ wfe <- function (formula, data, treat = "treat.name",
       ## vcov of wfe model
       vcov.wfe <- Psi.hat.wfe * (1/nrow(X.tilde))
       ## cat("dimension of vcov:", dim(vcov.wfe), "\n")
-      se.did <- as.real(Re(sqrt(diag(vcov.wfe))))
+      se.did <- as.double(Re(sqrt(diag(vcov.wfe))))
       
       ## ## check vcov of wfe model
       ## vcov.wfe2 <- Psi.hat.wfe2 * (1/nrow(X.tilde))
-      ## se.did2 <- as.real(Re(sqrt(diag(vcov.wfe2))))
+      ## se.did2 <- as.double(Re(sqrt(diag(vcov.wfe2))))
 
       ## cat("\nStd.errors for wfe:", se.did, se.did2, "\n")
       
@@ -1499,7 +1523,7 @@ wfe <- function (formula, data, treat = "treat.name",
 
         ## White test: null hypothesis is ``no misspecification''
 
-        white.stat <- as.real(Re(nrow(X.hat) * t(coef.ols - coef.wls) %*% ginv(Phi.hat) %*% (coef.ols - coef.wls)))
+        white.stat <- as.double(Re(nrow(X.hat) * t(coef.ols - coef.wls) %*% ginv(Phi.hat) %*% (coef.ols - coef.wls)))
         test.null <- pchisq(as.numeric(white.stat), df=p, lower.tail=F) < White.alpha
         white.p <- pchisq(as.numeric(white.stat), df=p, lower.tail=F)
         flush.console()
@@ -1540,7 +1564,9 @@ wfe <- function (formula, data, treat = "treat.name",
                 White.pvalue = white.p,
                 White.alpha = White.alpha,
                 White.stat = white.stat,
-                White.test = test.null)
+                White.test = test.null,
+                Y.wdm = Y.wdm,
+                X.wdm = X.wdm)
 
       class(z) <- "wfedid"
       z
@@ -1587,7 +1613,11 @@ summary.wfe <- function(object, signif.stars = getOption("show.signif.stars"),..
               White.pvalue = object$White.pvalue,
               White.alpha = object$White.alpha,
               White.stat = object$White.stat,
-              White.test = object$White.test
+              White.test = object$White.test,
+              Y = object$y,
+              X = object$x,
+              Y.wdm = object$Y.wdm,
+              X.wdm = object$X.wdm              
               )
   class(res) <- "summary.wfe"
   res
@@ -1648,7 +1678,11 @@ summary.wfedid <- function(object, signif.stars = getOption("show.signif.stars")
               White.pvalue = object$White.pvalue,
               White.alpha = object$White.alpha,
               White.stat = object$White.stat,
-              White.test = object$White.test
+              White.test = object$White.test,
+              Y = object$y,
+              X = object$x,
+              Y.wdm = object$Y.wdm,
+              X.wdm = object$X.wdm
               )
   class(res) <- "summary.wfedid"
   res

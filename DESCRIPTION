@@ -1,5 +1,5 @@
 Package: wfe
-Version: 1.1
+Version: 1.2
 Date: 2012-11-14
 Title: Weighted Linear Fixed Effects Regression Models for Causal
         Inference
@@ -21,6 +21,6 @@ Description: This R package provides a computationally efficient way of
 LazyLoad: yes
 LazyData: yes
 License: GPL (>= 2)
-Packaged: 2012-11-14 15:56:39 UTC; In Song
+Packaged: 2013-02-06 14:13:42 UTC; In Song
 Repository: CRAN
-Date/Publication: 2012-11-14 16:41:07
+Date/Publication: 2013-02-06 16:10:14
