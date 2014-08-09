@@ -1,6 +1,8 @@
 useDynLib(wfe)
 
 export(wfe, pwfe)
+
+importFrom(arm, bayesglm)
 import(Matrix, MASS)
 
 S3method(summary, wfe)

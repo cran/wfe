@@ -61,9 +61,8 @@ pwfe(formula, treat = "treat.name", outcome, data, pscore = NULL,
     \code{"ate"}.
   }
 
-  \item{estimator}{an optional character string indicating the
-    estimating method. One of \code{"fd"} or \code{"did"}.
-  }
+  \item{estimator}{an optional character string \code{"fd"} indicating
+    whether the first-difference estimator will be used.}
 
   \item{C.it}{an optional non-negative numeric vector specifying
     relative weights for each unit of analysis.

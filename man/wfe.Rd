@@ -12,7 +12,7 @@
 \usage{
 wfe(formula, data, treat = "treat.name",
     unit.index, time.index = NULL, method = "unit",
-    qoi = c("ate", "att") , estimator = NULL, C.it = NULL,
+    qoi = "ate", estimator = NULL, C.it = NULL,
     hetero.se = TRUE, auto.se = TRUE,
     White = TRUE, White.alpha = 0.05,
     verbose = TRUE, unbiased.se = FALSE, unweighted = FALSE,

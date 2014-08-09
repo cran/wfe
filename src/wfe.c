@@ -958,7 +958,7 @@ void TwayDemean(double *var,
    omean = sum_var / count;
    /* Rprintf("3] overall mean: %f\n", omean); */
 
-#pragma omp parallel for  
+/* #pragma omp parallel for   */
    for (i =0 ; i < *len_u_index ; i++) {
       for (j =0 ; j < *len_t_index ; j++) {
 	 for (k = 0 ; k < *len_data ; k++) {
@@ -984,7 +984,7 @@ int is_index_exist(int* unit_index, int* time_index,
 		   int* len_data, 
 		   int** exist) {
    int i, j, k;
-
+   int empty = 0;
    /* packing exist: 1 if exist 0 otherwise */
   
    /* initializing exist */
@@ -994,7 +994,7 @@ int is_index_exist(int* unit_index, int* time_index,
       }
    }
  
-#pragma omp parallel for  
+/* #pragma omp parallel for   */
    for (j = 0 ; j < *len_t_index; j++) {
       for (i=0; i < *len_u_index; i++) {
 	 for (k = 0 ; k < *len_data; k++) {
@@ -1005,6 +1005,7 @@ int is_index_exist(int* unit_index, int* time_index,
 	 }
       }
    }
+   return empty;
 }
 
 
@@ -1040,7 +1041,7 @@ void GenWeightsUnit(int *unit_index, int *time_index, int *tr, int *C_it,
    int** exist = intMatrix(*len_t_index, *len_u_index);
    is_index_exist(unit_index, time_index, len_u_index, len_t_index, len_data, exist);
 
-#pragma omp parallel for  
+/* #pragma omp parallel for   */
    for (i = 0 ; i < *len_u_index ; i++) {
 
 
@@ -1181,7 +1182,7 @@ void GenWeightsTime(int *time_index, int *unit_index, int *tr, int *C_it,
    int** exist = intMatrix(*len_t_index, *len_u_index);
    is_index_exist(unit_index, time_index, len_u_index, len_t_index, len_data, exist);
   
-#pragma omp parallel for  
+/* #pragma omp parallel for   */
    for (i = 0 ; i < *len_t_index ; i++) {
 
       if(*verbose) {
@@ -1302,7 +1303,7 @@ void GenWeightsFD(int* unit_index, int* time_index, int* tr, int* C_it,
    int** exist = intMatrix(*len_t_index, *len_u_index);
    is_index_exist(unit_index, time_index, len_u_index, len_t_index, len_data, exist);
   
-#pragma omp parallel for  
+/* #pragma omp parallel for   */
    for (j = 0 ; j < *len_t_index ; j++) {
 
       if(*verbose) {
@@ -1386,7 +1387,7 @@ int is_t_t1_same(int* u_i, int* t_i, int i, int j, int* tr, int size) {
    int t_it;
    int t_it_1;
 
-#pragma omp parallel for   
+/* #pragma omp parallel for    */
    for (iter = 0 ; iter < size ; iter++) {
       /* initialize t_it and t_it_1*/   
       if ( u_i[iter] == i && t_i[iter] == j )
@@ -1414,6 +1415,7 @@ int t_t1_same(int* unit_index, int* time_index,
    int i, j, k;
    int t_ij;
    int t_ij_1;
+   int empty = 0;
 
    /* packing exist: 1 if exist 0 otherwise */
   
@@ -1424,7 +1426,7 @@ int t_t1_same(int* unit_index, int* time_index,
       }
    }
  
-#pragma omp parallel for  
+/* #pragma omp parallel for   */
    for (j = 1 ; j < *len_t_index; j++) {
       for (i=0; i < *len_u_index; i++) {
 	 for (k = 0 ; k < *len_data; k++) {
@@ -1439,8 +1441,8 @@ int t_t1_same(int* unit_index, int* time_index,
 	    same[j][i] = 1;
 	 }
       }
-   
    }
+   return empty;
 }
 
 
@@ -1473,7 +1475,7 @@ void CalDID(int *unit_index, int *time_index, int *tr, int *C_it, double *y,
    /* PintMatrix(same,  *len_t_index, *len_u_index); */
 
 
-#pragma omp parallel for
+/* #pragma omp parallel for */
    for (j = 1 ; j < *len_t_index ; j++) {
       /* Rprintf("- %d th year calculated:\n", (j+1)); */
     
@@ -1524,6 +1526,7 @@ void CalDID(int *unit_index, int *time_index, int *tr, int *C_it, double *y,
 		  int jprime;
 		  double yprime;
 		  double diffprime = 0;
+		  double diff0;
 
 		  diff = y_it - y_it1;
 	      
@@ -1542,7 +1545,7 @@ void CalDID(int *unit_index, int *time_index, int *tr, int *C_it, double *y,
 			      count_control++;
 			  
 			      double yprime1;
-			      double diff0;
+			      /* double diff0; */
 			      for (iter = 0 ; iter < *len_data ; iter++) {
 				 if (unit_index[iter] == iprime && time_index[iter] == j) {
 				    yprime1 = y[iter];
@@ -1594,6 +1597,7 @@ void CalDID(int *unit_index, int *time_index, int *tr, int *C_it, double *y,
 		  int jprime;
 		  double yprime;
 		  double diffprime = 0;
+		  double diff0;
 	      
 		  diff = y_it1 - y_it;
 	  
@@ -1611,7 +1615,7 @@ void CalDID(int *unit_index, int *time_index, int *tr, int *C_it, double *y,
 			      count_control++;
 			  
 			      double yprime1;
-			      double diff0;
+			      /* double diff0; */
 			      for (iter = 0 ; iter < *len_data ; iter++) {
 				 if (unit_index[iter] == iprime && time_index[iter] == j) {
 				    yprime1 = y[iter];
@@ -1667,6 +1671,7 @@ void CalDID(int *unit_index, int *time_index, int *tr, int *C_it, double *y,
 		  int jprime;
 		  double yprime;
 		  double diffprime = 0;
+		  double diff0;
 
 		  diff = y_it - y_it1;
 	      
@@ -1684,7 +1689,7 @@ void CalDID(int *unit_index, int *time_index, int *tr, int *C_it, double *y,
 			      count_control++;
 			  
 			      double yprime1;
-			      double diff0;
+			      /* double diff0; */
 			      for (iter = 0 ; iter < *len_data ; iter++) {
 				 if (unit_index[iter] == iprime && time_index[iter] == j) {
 				    yprime1 = y[iter];
@@ -1827,7 +1832,7 @@ void DemeanDID(double *var, double *weights,
    omean = sum_wvar / sum_weights;
    /* Rprintf("3] overall mean: %f\n", omean); */
 
-#pragma omp parallel for  
+/* #pragma omp parallel for   */
    for (i =0 ; i < *len_u_index ; i++) {
       for (j =0 ; j < *len_t_index ; j++) {
 	 for (k = 0 ; k < *len_data ; k++) {
@@ -1885,7 +1890,7 @@ void GenWeightsDID(int* unit_index, int* time_index, int* tr, int* C_it,
    }
 
 
-#pragma omp parallel for  
+/* #pragma omp parallel for   */
    for (j = 1 ; j < *len_t_index ; j++) {
 
       if(*verbose) {
