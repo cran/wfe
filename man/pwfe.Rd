@@ -58,8 +58,8 @@ pwfe(formula, treat = "treat.name", outcome, data, pscore = NULL,
   }
 
   \item{qoi}{one of \code{"ate"} or \code{"att"}. The default is
-    \code{"ate"}.
-  }
+    \code{"ate"}. \code{"fd"} and \code{"did"} are not compatible with
+    \code{pwfe}.}
 
   \item{estimator}{an optional character string \code{"fd"} indicating
     whether the first-difference estimator will be used.}
@@ -146,7 +146,7 @@ pwfe(formula, treat = "treat.name", outcome, data, pscore = NULL,
   score will be estimated on entire data at once.
 
   The estimated propensity scores will be used to transform the
-  \code{outcome} variable as described in Imai and Kim (2011).
+  \code{outcome} variable as described in Imai and Kim (2012).
 
   \code{pwfe} calculates weights based on different underlying causal
   quantity of interest: Average Treatment Effect (\code{qoi = "ate"}) or
@@ -164,10 +164,10 @@ pwfe(formula, treat = "treat.name", outcome, data, pscore = NULL,
 
 }
 
-\references{
-  Imai, Kosuke and In Song Kim. (2012) ``On the Use of Linear Fixed
-  Effects Regression Models for Causal Inference.'' Technical Report,
-  Department of Politics, Princeton University.  available at
+\references{ Imai, Kosuke and In Song Kim. (2016) ``When Should We Use
+  Linear Fixed Effects Regression Models for Causal Inference with
+  Longitudinal Data?'' Technical Report, Department of Politics,
+  Princeton University.  available at
   \url{http://imai.princeton.edu/research/FEmatch.html}
 
   Stock, James and Mark Watson. (2008) ``Heteroskedasticity-Robust
@@ -187,6 +187,8 @@ pwfe(formula, treat = "treat.name", outcome, data, pscore = NULL,
 ### generated panel data with arbitrary number of units and time.
 
 ## generate panel data with number of units = N, number of time = Time
+\dontrun{
+
 N <- 10 # number of distinct units
 Time <- 15 # number of distinct time
 
@@ -298,6 +300,8 @@ mod.ps <- pwfe(treat = "tr", outcome = "y", data = Data.obs, pscore = "pscore",
 
 ## summarize the results
 summary(mod.ps)
+}
+
 }
 
 \author{Kosuke Imai, Princeton University, \email{kimai@princeton.edu}
