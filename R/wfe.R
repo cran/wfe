@@ -1,7 +1,9 @@
 wfe <- function (formula, data, treat = "treat.name",
                  unit.index, time.index = NULL, method = "unit",
+                 dyad1.index = NULL, dyad2.index = NULL,
                  qoi = "ate", estimator = NULL, C.it = NULL,
                  hetero.se = TRUE, auto.se = TRUE, df.adjustment = TRUE,
+                 dyad.se = FALSE,
                  White = TRUE, White.alpha = 0.05,
                  verbose = TRUE, unbiased.se = FALSE, unweighted = FALSE,
                  store.wdm = FALSE, maxdev.did= NULL,
@@ -109,6 +111,19 @@ wfe <- function (formula, data, treat = "treat.name",
     uniq.u <- sort(uniq.u[!(uniq.u %in% 0)])
     J.u <- length(uniq.u)
     data$u.index <- Index(numeric.u.index, uniq.u, J.u, tn.row)
+
+    ## for dyadic data: unit 1 and unit 2 that compose each dyad
+    if(dyad.se == TRUE){
+        ## Warning 
+        if(is.null(dyad1.index) | is.null(dyad2.index)){
+            stop("Warning: For dyadic data, two separate unit indices for the members of each dyad -- dyad1.index, dyad2.indx -- should be provided")
+        }
+
+        data$dyad <- data[, unit.index]
+        data$c1 <- data[, dyad1.index]
+        data$c2 <- data[, dyad2.index]
+
+    }
 
     ## time index
     if (is.null(time.index)) {
@@ -422,46 +437,116 @@ wfe <- function (formula, data, treat = "treat.name",
         diag.ee.tilde <- c(u.tilde^2)
         diag.ee.hat <- c(u.hat^2)
 
-        
-        if ((hetero.se == TRUE) & (auto.se == TRUE)) {# Default is Arellano
+        ## e <- environment()
+        ## save(file = "dyadSE.RData", list = ls(), env = e)
+
+
+        if(dyad.se == TRUE){
+
+            std.error <- "Robust Standard Error for Dyadic Data"
+            
+            OmegaDyad <- function(X.tilde, e.tilde, dyadID, c1, c2) {
+
+                uniq.dyadID <- unique(dyadID)
+                
+                for(d in 1:length(uniq.dyadID)){
+                    ## print(d)
+                    dyad.d <- uniq.dyadID[d]
+                    cty1 <- c1[which(dyadID == dyad.d)][1]
+                    cty2 <- c2[which(dyadID == dyad.d)][1]
+                    
+                    idx.d <- which(dyadID == dyad.d)
+                    x.d <- as.matrix(X.tilde[idx.d,])
+                    e.d <- matrix(e.tilde[idx.d], ncol=1)
+                    
+                    ## consider all the other dyads in which country 1 or country
+                    ## 2 is the member
+                    idx.dprime <- which( (c1==cty1 | c2 == cty2) & dyadID!=dyad.d)
+                    uniq.dprime <- unique(dyadID[idx.dprime])
+
+                    ## in case only one year is observed
+                    if(is.null(nrow(x.d))){
+                        x.d <- t(matrix(x.d, ncol=1))
+                        e.d <- as.matrix(as.numeric(e.d))
+                        Omega.hat <- t(x.d) %*% e.d %*% t(e.d) %*% x.d
+                    } else {
+                        Omega.hat <- t(x.d) %*% e.d %*% t(e.d) %*% x.d
+                    }
+
+                    ## loop over all dyads that have one of the two members
+                    for(p in 1:length(uniq.dprime)){
+                        ## print(p)
+                        dprime <- uniq.dprime[p]
+                        idx.dprime <- which(dyadID == dprime)
+                        x.dprime <- as.matrix(X.tilde[idx.dprime,])
+                        e.dprime <- matrix(e.tilde[idx.dprime], ncol=1)
+
+                        if(is.null(nrow((x.dprime)))){
+                            x.dprime <- t(matrix(x.dprime, ncol=1))
+                            e.dprime <- as.matrix(as.numeric(e.dprime))
+                            Odprime <- t(x.d) %*% e.d %*% t(e.dprime) %*% x.dprime
+                        } else {
+                            Odprime <- t(x.d) %*% e.d %*% t(e.dprime) %*% x.dprime
+                        }
+                        
+                        if(p==1){
+                            Oprime <- Odprime
+                        } else {
+                            Oprime <- Oprime + Odprime 
+                        }
+                    }
+
+                    ## storing results
+                    if(d==1){
+                        Omega.hat.dyad <- Omega.hat + Oprime
+                    } else {
+                        Omega.hat.dyad <- Omega.hat.dyad + Omega.hat + Oprime
+                    }
+                }
+                return(Omega.hat.dyad)                
+            }
+
+            Omega.hat.DYAD <- OmegaDyad(X.tilde, u.tilde, data$dyad, data$c1, data$c2)
+            Omega.hat.fe.DYAD <- OmegaDyad(X.hat, u.hat, data$dyad, data$c1, data$c2)
+
+            Psi.hat.wfe <- (ginv.XX.tilde) %*% Omega.hat.DYAD %*% (ginv.XX.tilde)
+            Psi.hat.fe <- (ginv.XX.hat) %*% Omega.hat.fe.DYAD %*% (ginv.XX.hat)
+
+        } else if ((hetero.se == TRUE) & (auto.se == TRUE)) {# Default is Arellano
             std.error <- "Heteroscedastic / Autocorrelation Robust Standard Error"
 
             ## 1. arbitrary autocorrelation as well as heteroskedasticity (Eq 12)
-
-            ## degrees of freedom adjustment
-            df.adjust <- 1/(nrow(X.tilde)) * ((nrow(X.tilde)-1)/(nrow(X.tilde)-J.u-p)) * (J.u/(J.u-1))
             
             Omega.hat.HAC <- OmegaHatHAC(nrow(X.tilde), p, wdm.unit, J.u, X.tilde, u.tilde)
             Omega.hat.HAC <- matrix(Omega.hat.HAC, nrow = p, ncol = p)
             ## Omega.hat.HAC <- (1/(nrow(X.tilde)))* Omega.hat.HAC # without degree of freedom adjustment 
-            Omega.hat.HAC <- df.adjust * Omega.hat.HAC
+            Omega.hat.HAC <- 1/J.u * Omega.hat.HAC
             
             Omega.hat.fe.HAC <- OmegaHatHAC(nrow(X.hat), p, wdm.unit, J.u, X.hat, u.hat)
             Omega.hat.fe.HAC <- matrix(Omega.hat.fe.HAC, nrow = p, ncol = p)
             ## Omega.hat.fe.HAC <- (1/(nrow(X.hat))) * Omega.hat.fe.HAC # without degree of freedom adjustment
-            Omega.hat.fe.HAC <- df.adjust * Omega.hat.fe.HAC
+            Omega.hat.fe.HAC <- 1/J.u * Omega.hat.fe.HAC
 
             ## Psi.hat.wfe <- (nrow(X.tilde) * ginv.XX.tilde) %*% Omega.hat.HAC %*% (nrow(X.tilde) * ginv.XX.tilde)
             ## Psi.hat.fe <- (nrow(X.hat) * ginv.XX.hat) %*% Omega.hat.fe.HAC %*% (nrow(X.hat) * ginv.XX.hat)
 
             Psi.hat.wfe <- (J.u*ginv.XX.tilde) %*% Omega.hat.HAC %*% (J.u*ginv.XX.tilde)
             Psi.hat.fe <- (J.u*ginv.XX.hat) %*% Omega.hat.fe.HAC %*% (J.u*ginv.XX.hat)
+
+            ## degrees of freedom adjustment
+            Nnonzero <- length(which(data$W.it !=0))
+            K <- nc-3
+            dfHAC <- (J.u/(J.u-1)) * (Nnonzero/(Nnonzero-K+1))
+            
+            Psi.hat.wfe <- dfHAC * Psi.hat.wfe
+            Psi.hat.fe <- dfHAC * Psi.hat.fe
+
             
         } else if ( (hetero.se == TRUE) & (auto.se == FALSE) ) {# independence across observations but heteroskedasticity
             std.error <- "Heteroscedastic Robust Standard Error"
 
             ## 2. independence across observations but heteroskedasticity (Eq 11)
             
-            ## Omega.hat.HC <- OmegaHatHC(nrow(X.tilde), p, wdm.unit, J.u, X.tilde, u.tilde)
-            ## Omega.hat.HC <- matrix(Omega.hat.HC, nrow = p, ncol = p)
-            ## ## same as the following matrix multiplication but slower
-            ## ## Omega.hat.he <- t(X.tilde) %*% diag(c(u.tilde)^2, nrow=nrow(X.tilde)) %*% X.tilde
-            ## Omega.hat.HC <- (1/(nrow(X.tilde) - J.u - p)) * Omega.hat.HC
-
-
-            ## Omega.hat.HC <- (1/(nrow(X.tilde) - J.u - p))*(crossprod((X.tilde*diag.ee.tilde), X.tilde)) 
-            ## Omega.hat.fe.HC <- (1/(nrow(X.hat) - J.u - p))*(crossprod((X.hat*diag.ee.hat), X.hat))  
-
             Omega.hat.HC <- (1/J.u)*(crossprod((X.tilde*diag.ee.tilde), X.tilde)) 
             Omega.hat.fe.HC <- (1/J.u)*(crossprod((X.hat*diag.ee.hat), X.hat))  
             
@@ -510,11 +595,17 @@ wfe <- function (formula, data, treat = "treat.name",
                 }
             }
             
-            ## Psi.hat.wfe <- (nrow(X.tilde) * ginv.XX.tilde) %*% Omega.hat.HC %*% (nrow(X.tilde) * ginv.XX.tilde)
-            ## Psi.hat.fe <- (nrow(X.hat) * ginv.XX.hat) %*% Omega.hat.fe.HC %*% (nrow(X.hat) * ginv.XX.hat)
-
             Psi.hat.wfe <- (J.u*ginv.XX.tilde) %*% Omega.hat.HC %*% (J.u*ginv.XX.tilde)
             Psi.hat.fe <- (J.u*ginv.XX.hat) %*% Omega.hat.fe.HC %*% (J.u*ginv.XX.hat)
+
+            ## degrees of freedom adjustment: G / (G -1) * N / (N - K + 1)
+            ## where G is the number of groups (number of fixed effects),
+            ## N is the number of non-zero weights
+	    Nnonzero <- length(which(data$W.it !=0))
+            K <- nc-3
+            dfHC <- (J.u/(J.u-1)) * (Nnonzero/(Nnonzero-K+1))
+            Psi.hat.wfe <- dfHC * Psi.hat.wfe
+            Psi.hat.fe <- dfHC * Psi.hat.fe
             
 
         } else if ( (hetero.se == FALSE) & (auto.se == FALSE) ) {# indepdence and homoskedasticity
@@ -535,26 +626,19 @@ wfe <- function (formula, data, treat = "treat.name",
 
         }
 
-        ## var.cov <- Psi.hat.wfe * (1/nrow(X.tilde))
-        ## var.cov.fe <- Psi.hat.fe *(1/nrow(X.hat))
 
-        var.cov <- Psi.hat.wfe * (1/J.u)
-        var.cov.fe <- Psi.hat.fe *(1/J.u)
-        
-### traditional one way fixed effect results
+        if(dyad.se == TRUE){
+            var.cov <- Psi.hat.wfe 
+            var.cov.fe <- Psi.hat.fe 
+        } else {
+            var.cov <- Psi.hat.wfe * (1/J.u)
+            var.cov.fe <- Psi.hat.fe *(1/J.u)
+        }
 
-        
-        ## if (verbose) {
-        ##   cat("Traditional one-way fixed effect\n")
-        ##   print(summary(fit.ols))
-        ##   cat("Robust Standard errors for Standard FE \n")
-        ##   print(sqrt(diag(var.cov.fe)))
-        ##   flush.console()
-        
-        ## }
-        
 
 ### White (1980) Test: Theorem 4
+
+        Nnonzero <- length(which(data$W.it !=0))
 
         diag.ee <- c(u.hat) * c(u.tilde)
         
@@ -562,13 +646,15 @@ wfe <- function (formula, data, treat = "treat.name",
         Lambda.hat2 <-  1/((nrow(X.tilde) - J.u - p))* (crossprod((X.tilde*diag.ee), X.hat))  
 
 
-        Phi.hat <- Psi.hat.wfe + Psi.hat.fe - (nrow(X.hat)*ginv.XX.hat) %*% Lambda.hat1 %*% (nrow(X.tilde)*ginv.XX.tilde) - (nrow(X.tilde)*ginv.XX.tilde) %*% Lambda.hat2 %*% (nrow(X.hat)*ginv.XX.hat)
+        Phi.hat <- Psi.hat.wfe + Psi.hat.fe - (Nnonzero*ginv.XX.hat) %*% Lambda.hat1 %*% (Nnonzero*ginv.XX.tilde) - (Nnonzero*ginv.XX.tilde) %*% Lambda.hat2 %*% (Nnonzero*ginv.XX.hat)
 
         rm(Lambda.hat1, Lambda.hat2)
         gc()
 
         ## White test: null hypothesis is ``no misspecification''
-        white.stat <- nrow(X.hat) * t(coef.ols - coef.wls) %*% ginv(Phi.hat) %*% (coef.ols - coef.wls)
+        ## white.stat <- nrow(X.hat) * t(coef.ols - coef.wls) %*% ginv(Phi.hat) %*% (coef.ols - coef.wls)
+        white.stat <- Nnonzero * t(coef.ols - coef.wls) %*% ginv(Phi.hat) %*% (coef.ols - coef.wls)
+        
         test.null <- pchisq(as.numeric(white.stat), df=p, lower.tail=F) < White.alpha
         white.p <- pchisq(as.numeric(white.stat), df=p, lower.tail=F)
 

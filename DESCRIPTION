@@ -2,12 +2,11 @@ Package: wfe
 Type: Package
 Title: Weighted Linear Fixed Effects Regression Models for Causal
         Inference
-Version: 1.6
-Date: 2017-07-18
+Version: 1.7
+Date: 2018-11-25
 Authors@R: c(
   person("In Song", "Kim", email = "insong@mit.edu", role = c("aut", "cre")),
-  person("Kosuke", "Imai", email = "kimai@Princeton.edu", role = c("aut")),
-  person("Erik", "Wang", email = "haixiaow@princeton.edu", role = c("aut"))
+  person("Kosuke", "Imai", email = "imai@Harvard.edu", role = c("aut"))
   )
 Description: Provides a computationally efficient way of fitting
 	     weighted linear fixed effects estimators for causal
@@ -21,7 +20,7 @@ Description: Provides a computationally efficient way of fitting
 	     described in Imai and Kim (2017) "When should We Use
 	     Linear Fixed Effects Regression Models for Causal
 	     Inference with Longitudinal Data?", available at
-	     <https://imai.princeton.edu/research/FEmatch.html>.
+	     <https://imai.fas.harvard.edu/research/FEmatch.html>.
 License: GPL (>= 2)
 Imports: utils, arm, Matrix, MASS, methods
 Depends: R (>= 2.11.0)
@@ -29,10 +28,9 @@ Encoding: UTF-8
 LazyData: true
 BugReports: https://github.com/insongkim/wfe/issues
 NeedsCompilation: yes
-Packaged: 2017-07-18 21:54:06 UTC; insong
+Packaged: 2018-11-25 18:31:43 UTC; insong
 Author: In Song Kim [aut, cre],
-  Kosuke Imai [aut],
-  Erik Wang [aut]
+  Kosuke Imai [aut]
 Maintainer: In Song Kim <insong@mit.edu>
 Repository: CRAN
-Date/Publication: 2017-07-18 22:05:36 UTC
+Date/Publication: 2018-11-25 19:00:03 UTC

@@ -12,8 +12,10 @@
 \usage{
 wfe(formula, data, treat = "treat.name",
     unit.index, time.index = NULL, method = "unit",
+    dyad1.index = NULL, dyad2.index = NULL,
     qoi = "ate", estimator = NULL, C.it = NULL,
-    hetero.se = TRUE, auto.se = TRUE, df.adjustment = TRUE,
+    hetero.se = TRUE, auto.se = TRUE, df.adjustment = TRUE,  
+    dyad.se = FALSE,
     White = TRUE, White.alpha = 0.05,
     verbose = TRUE, unbiased.se = FALSE, unweighted = FALSE,
     store.wdm = FALSE, maxdev.did = NULL,
@@ -48,6 +50,16 @@ wfe(formula, data, treat = "treat.name",
     effects regression models, set method to the default value
     \code{unit}.}
 
+  \item{dyad1.index}{a character string indicating the variable name of first unit
+    of a given dyad. The default is \code{NULL}.
+    This is required to calculate robust standard errors with dyadic data.
+  }
+
+  \item{dyad2.index}{a character string indicating the variable name of second unit
+    of a given dyad. The default is \code{NULL}.
+    This is required to calculate robust standard errors with dyadic data.
+  }
+
   \item{qoi}{one of \code{"ate"} or \code{"att"}. The default is
     \code{"ate"}. If set to \code{"att"} in implementing \code{"fd"}
     and \code{"did"} estimators, the comparison of the treated
@@ -78,6 +90,10 @@ wfe(formula, data, treat = "treat.name",
     default is \code{TRUE}.
   }
 
+  \item{dyad.se}{a logical value indicating whether correlations across dyads exist. The
+    default is \code{FALSE}. 
+  }
+
   \item{df.adjustment}{a logical value indicating whether a degrees of freedom adjustment 
       for standard errors calculation is performed. The default is \code{TRUE}.
   }
@@ -87,7 +103,7 @@ wfe(formula, data, treat = "treat.name",
   }
   
   \item{White.alpha}{level of functional specification test. See White
-    (1980) and Imai and Kim (2016). The default is \code{0.05}.
+    (1980) and Imai and Kim (2018). The default is \code{0.05}.
   }
 
   \item{verbose}{logical. If \code{TRUE}, helpful messages along with
@@ -184,12 +200,14 @@ wfe(formula, data, treat = "treat.name",
 
 }
 
-\references{Imai, Kosuke and In Song Kim. (2016) ``When Should We Use
-  Linear Fixed Effects Regression Models for Causal Inference with
-  Longitudinal Data?'' Technical Report, Department of Politics,
-  Princeton University.  available at
-  \url{http://imai.princeton.edu/research/FEmatch.html}
+\references{Imai, Kosuke and In Song Kim. (2018) ``When Should We Use
+Unit Fixed Effects Regression Models for Causal Inference with
+Longitudinal Data?" American Journal of Political Science,
+Forthcoming.
 
+  Aronow, Peter M., Cyrus Samii, and Valentina A. Assenova (2015) ``Cluster–robust
+  Variance Estimation for Dyadic Data." Political Analysis 23, no. 4, 564--577.
+	
   Stock, James and Mark Watson. (2008) ``Heteroskedasticity-Robust
   Standard Errors for Fixed Effect Panel Data Regression'' Econometrica,
   76, 1.
@@ -349,6 +367,6 @@ mod.did2$coef[1] ==  mod.did$coef[1]
 
 
 \author{In Song Kim, Massachusetts Institute of Technology, \email{insong@mit.edu}		
-	and Kosuke Imai, Princeton University, \email{kimai@princeton.edu}	}
+	and Kosuke Imai, Princeton University, \email{imai@harvard.edu}	}
 
 \keyword{regression}
